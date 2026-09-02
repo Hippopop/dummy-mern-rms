@@ -1,0 +1,43 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+dist/
+build/
+.next/
+out/
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.local.example
+
+# local mongodb (project-scoped replica set)
+.mongo/
+
+# uploads
+# ignore the CONTENTS, not the directory itself — a negation cannot rescue a
+# file inside an ignored directory, so the trailing /* is load-bearing
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# logs
+*.log
+npm-debug.log*
+logs/
+
+# editor / os
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# misc
+coverage/
+.turbo/
+*.tsbuildinfo
+
