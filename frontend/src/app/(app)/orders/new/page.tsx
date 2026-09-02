@@ -4,10 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Minus, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/app-shell';
+import { Panel, PanelHeader } from '@/components/panel';
 import { useAction, useCategories, useMenu, useTables } from '@/hooks/use-api';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -57,15 +56,15 @@ export default function NewOrderPage() {
 
   return (
     <>
-      <PageHeader title="Take an order" description="Pick a table, note the guest's details, then add dishes" />
+      <PageHeader description="Pick a table, note the guest's details, then add dishes" />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Table and guest</CardTitle></CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Table</Label>
+          <Panel>
+            <PanelHeader title="Table and guest" aside="Step 01" />
+            <div className="grid gap-4 px-4 pb-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="label-tech">Table</Label>
                 <Select value={table} onValueChange={setTable}>
                   <SelectTrigger><SelectValue placeholder={free.length ? 'Pick a free table' : 'No free tables'} /></SelectTrigger>
                   <SelectContent>
@@ -73,27 +72,27 @@ export default function NewOrderPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="guests">Guests</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="guests" className="label-tech">Guests</Label>
                 <Input id="guests" type="number" min={1} value={guestCount} onChange={(e) => setGuestCount(e.target.value)} />
                 {seats > 0 && Number(guestCount) > seats ? (
-                  <p className="text-xs text-destructive">That table seats {seats}.</p>
+                  <p className="text-[12px] text-destructive">That table seats {seats}.</p>
                 ) : null}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cname">Customer name</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="cname" className="label-tech">Customer name</Label>
                 <Input id="cname" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cphone">Phone</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="cphone" className="label-tech">Phone</Label>
                 <Input id="cphone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)}
                   placeholder="+8801711223344" />
-                <p className="text-xs text-muted-foreground">A new customer record is created if this number is unknown.</p>
+                <p className="text-[12px] text-muted-foreground">A new customer record is created if this number is unknown.</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </Panel>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2.5">
             <Input placeholder="Search the menu…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -104,46 +103,46 @@ export default function NewOrderPage() {
             </Select>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {menu?.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 disabled={!item.canCook}
                 onClick={() => addLine({ id: item.id, name: item.name, price: item.price })}
-                className="rounded-lg border p-3 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                className="border border-border p-3 text-left transition-colors hover:border-primary hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-border disabled:hover:bg-transparent"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-medium">{item.name}</span>
-                  <span className="shrink-0 text-sm">{money(item.price)}</span>
+                  <span className="text-[13.5px] font-medium">{item.name}</span>
+                  <span className="figure shrink-0 text-[14px]">{money(item.price)}</span>
                 </div>
                 {!item.canCook ? (
-                  <Badge variant="destructive" className="mt-2 text-xs">
+                  <span className="label-tech mt-1.5 inline-block text-destructive">
                     {item.isAvailable ? 'Out of ingredients' : 'Off menu'}
-                  </Badge>
+                  </span>
                 ) : item.maxPortions !== null ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{item.maxPortions} left</p>
+                  <span className="label-tech mt-1.5 inline-block">{item.maxPortions} left</span>
                 ) : null}
               </button>
             ))}
           </div>
         </div>
 
-        <Card className="h-fit lg:sticky lg:top-6">
-          <CardHeader><CardTitle className="text-base">Order</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
+        <Panel className="h-fit lg:sticky lg:top-6">
+          <PanelHeader title="Order" aside={lines.length ? `${lines.length} lines` : undefined} />
+          <div className="space-y-3 px-4 pb-4">
             {lines.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Tap a dish to add it.</p>
+              <p className="py-4 text-[13px] text-muted-foreground">Tap a dish to add it.</p>
             ) : lines.map((line) => (
               <div key={line.menuItem} className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-sm">{line.name}</p>
-                  <p className="text-xs text-muted-foreground">{money(line.price)} each</p>
+                  <p className="truncate text-[13.5px]">{line.name}</p>
+                  <p className="text-[12px] tabular-nums text-muted-foreground">{money(line.price)} each</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Button size="icon" variant="outline" className="size-7"
                     onClick={() => changeQuantity(line.menuItem, -1)}><Minus className="size-3" /></Button>
-                  <span className="w-6 text-center text-sm">{line.quantity}</span>
+                  <span className="figure w-6 text-center text-[14px]">{line.quantity}</span>
                   <Button size="icon" variant="outline" className="size-7"
                     onClick={() => changeQuantity(line.menuItem, 1)}><Plus className="size-3" /></Button>
                 </div>
@@ -152,10 +151,11 @@ export default function NewOrderPage() {
 
             {lines.length > 0 ? (
               <>
-                <div className="flex justify-between border-t pt-3 text-sm font-medium">
-                  <span>Subtotal</span><span>{money(subtotal)}</span>
+                <div className="flex items-baseline justify-between border-t border-border pt-3">
+                  <span className="label-tech">Subtotal</span>
+                  <span className="figure text-[20px]">{money(subtotal)}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Tax and service charge are added on the bill.</p>
+                <p className="text-[12px] text-muted-foreground">Tax and service charge are added on the bill.</p>
               </>
             ) : null}
 
@@ -169,8 +169,8 @@ export default function NewOrderPage() {
             >
               {create.isPending ? 'Placing…' : 'Place order'}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </Panel>
       </div>
     </>
   );

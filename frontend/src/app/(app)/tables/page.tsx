@@ -3,15 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/app-shell';
+import { Panel, Label as Tech } from '@/components/panel';
 import { useAction, useTables } from '@/hooks/use-api';
 import { useAuth } from '@/providers/auth-provider';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { time } from '@/lib/format';
 
 export default function TablesPage() {
@@ -25,23 +25,25 @@ export default function TablesPage() {
     invalidate: ['tables'], success: 'Table added',
   });
 
+  const occupied = tables?.filter((t) => t.status === 'occupied').length ?? 0;
+  const seats = tables?.reduce((sum, t) => sum + t.capacity, 0) ?? 0;
+
   return (
     <>
       <PageHeader
-        title="Tables"
-        description="Floor status. Seat guests from the Orders screen."
+        description={`${occupied} of ${tables?.length ?? 0} tables occupied · ${seats} seats on the floor`}
         action={can('tables', 'write') ? (
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button>Add table</Button></DialogTrigger>
+            <DialogTrigger asChild><Button size="sm">Add table</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Add a table</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle className="display text-lg">Add a table</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="label">Label</Label>
+                  <Label htmlFor="label" className="label-tech">Label</Label>
                   <Input id="label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="T-11" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="capacity">Seats</Label>
+                  <Label htmlFor="capacity" className="label-tech">Seats</Label>
                   <Input id="capacity" type="number" min={1} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
                 </div>
               </div>
@@ -59,37 +61,45 @@ export default function TablesPage() {
       />
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-32" />)}
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-36" />)}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {tables?.map((table) => (
-            <Card key={table.id} className={table.status === 'occupied' ? 'border-primary' : ''}>
-              <CardContent className="space-y-2 pt-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold">{table.label}</span>
-                  <Badge variant={table.status === 'occupied' ? 'default' : 'secondary'}>{table.status}</Badge>
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {tables?.map((table) => {
+            const busy = table.status === 'occupied';
+            return (
+              <Panel key={table.id} className={cn('px-4 py-3.5', busy && 'border-primary bg-accent/40')}>
+                <div className="flex items-start justify-between">
+                  <span className="display text-[24px] leading-none">{table.label}</span>
+                  <span className={cn('label-tech flex items-center gap-1.5', busy ? 'text-primary' : '')}>
+                    <span className={cn('size-1.5', busy ? 'bg-primary' : 'bg-muted-foreground')} />
+                    {busy ? 'Seated' : 'Open'}
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">{table.capacity} seats</p>
-                {table.status === 'occupied' ? (
-                  <div className="space-y-1 text-xs">
-                    <p>{table.guestCount} guests · since {time(table.occupiedAt)}</p>
-                    {table.assignedWaiter ? <p className="text-muted-foreground">Waiter: {table.assignedWaiter.name}</p> : null}
+                <p className="label-tech mt-2">{table.capacity} seats</p>
+
+                {busy ? (
+                  <div className="mt-3 space-y-1 border-t border-border pt-2.5 text-[12.5px]">
+                    <p className="tabular-nums">{table.guestCount} guests · since {time(table.occupiedAt)}</p>
+                    {table.assignedWaiter ? <p className="text-muted-foreground">{table.assignedWaiter.name}</p> : null}
                     {table.currentOrder ? (
-                      <Link href={`/orders/${table.currentOrder._id}`} className="text-primary underline">
-                        {table.currentOrder.orderNumber}
+                      <Link href={`/orders/${table.currentOrder._id}`} className="inline-block font-medium text-primary hover:underline">
+                        {table.currentOrder.orderNumber} →
                       </Link>
                     ) : null}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Free</p>
+                  <p className="mt-3 border-t border-border pt-2.5 text-[12.5px] text-muted-foreground">
+                    Ready to seat
+                  </p>
                 )}
-              </CardContent>
-            </Card>
-          ))}
+              </Panel>
+            );
+          })}
         </div>
       )}
+      {!isLoading && !tables?.length ? <Tech>No tables configured yet.</Tech> : null}
     </>
   );
 }

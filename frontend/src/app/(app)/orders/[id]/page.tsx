@@ -3,11 +3,10 @@
 import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/app-shell';
+import { Panel, PanelHeader } from '@/components/panel';
 import { useAction, useCategories, useMenu, useOrder, useStaff } from '@/hooks/use-api';
 import { useAuth } from '@/providers/auth-provider';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,7 +28,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
     invalidate: ['orders', 'tables', 'kitchen'], success: 'Order cancelled',
   });
 
-  if (isLoading || !order) return <><PageHeader title="Order" /><Skeleton className="h-64" /></>;
+  if (isLoading || !order) return <Skeleton className="h-64" />;
 
   const closed = order.status === 'completed' || order.status === 'cancelled';
 
@@ -42,12 +41,12 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
           <div className="flex gap-2">
             {can('orders', 'write') && !closed ? (
               <>
-                <Button variant="outline" onClick={() => setAdding(true)}>Add items</Button>
-                <Button variant="outline" onClick={() => setAssigning(true)}>Assign waiter</Button>
+                <Button size="sm" variant="outline" onClick={() => setAdding(true)}>Add items</Button>
+                <Button size="sm" variant="outline" onClick={() => setAssigning(true)}>Assign waiter</Button>
               </>
             ) : null}
             {can('bills', 'write') && !order.bill && !closed ? (
-              <Button onClick={() => makeBill.mutate(undefined, {
+              <Button size="sm" onClick={() => makeBill.mutate(undefined, {
                 onSuccess: (bill) => router.push(`/bills/${bill.id}`),
               })}>Generate bill</Button>
             ) : null}
@@ -56,41 +55,53 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
       />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Items</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
+        <Panel>
+          <PanelHeader title="Items" aside={`${order.items.length} lines`} />
+          <div className="px-4 pb-4">
             {order.items.map((item) => (
-              <div key={item._id} className="flex items-center justify-between border-b pb-3 last:border-0">
+              <div key={item._id} className="flex items-center justify-between gap-3 border-b border-border py-3">
                 <div>
-                  <p className="text-sm font-medium">{item.quantity} × {item.name}</p>
-                  {item.notes ? <p className="text-xs text-muted-foreground">{item.notes}</p> : null}
-                  <Badge variant="outline" className="mt-1 text-xs capitalize">{item.status}</Badge>
+                  <p className="text-[13.5px]">
+                    <span className="figure mr-1.5 text-[15px]">{item.quantity}×</span>
+                    <span className="font-medium">{item.name}</span>
+                  </p>
+                  {item.notes ? <p className="mt-0.5 text-[12px] text-muted-foreground">{item.notes}</p> : null}
+                  <span className="label-tech mt-1.5 inline-block border border-border px-1.5 py-0.5">{item.status}</span>
                 </div>
-                <span className="text-sm">{money(item.unitPrice * item.quantity)}</span>
+                <span className="text-[13.5px] tabular-nums">{money(item.unitPrice * item.quantity)}</span>
               </div>
             ))}
-            <div className="flex justify-between pt-2 font-medium">
-              <span>Subtotal</span><span>{money(order.subtotal)}</span>
+            <div className="flex items-baseline justify-between pt-3">
+              <span className="label-tech">Subtotal</span>
+              <span className="figure text-[20px]">{money(order.subtotal)}</span>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </Panel>
 
-        <Card className="h-fit">
-          <CardHeader><CardTitle className="text-base">Details</CardTitle></CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div><p className="text-muted-foreground">Customer</p><p>{order.customer?.name}</p>
-              <p className="text-xs text-muted-foreground">{order.customer?.phone}</p></div>
-            <div><p className="text-muted-foreground">Waiter</p><p>{order.waiter?.name ?? 'Unassigned'}</p></div>
-            <div><p className="text-muted-foreground">Status</p>
-              <Badge variant="outline" className="capitalize">{order.status}</Badge></div>
+        <Panel className="h-fit">
+          <PanelHeader title="Details" />
+          <div className="space-y-3.5 px-4 pb-4">
+            <div>
+              <p className="label-tech">Customer</p>
+              <p className="text-[13.5px]">{order.customer?.name}</p>
+              <p className="text-[12px] tabular-nums text-muted-foreground">{order.customer?.phone}</p>
+            </div>
+            <div>
+              <p className="label-tech">Waiter</p>
+              <p className="text-[13.5px]">{order.waiter?.name ?? 'Unassigned'}</p>
+            </div>
+            <div>
+              <p className="label-tech">Status</p>
+              <span className="label-tech mt-1 inline-block border border-border px-1.5 py-0.5 text-foreground">{order.status}</span>
+            </div>
             {can('orders', 'write') && !closed ? (
               <Button variant="destructive" size="sm" className="w-full"
                 onClick={() => cancel.mutate(undefined, { onSuccess: () => router.push('/orders') })}>
                 Cancel order
               </Button>
             ) : null}
-          </CardContent>
-        </Card>
+          </div>
+        </Panel>
       </div>
 
       {adding ? <AddItemsDialog orderId={id} onClose={() => setAdding(false)} /> : null}
@@ -114,7 +125,7 @@ function AddItemsDialog({ orderId, onClose }: { orderId: string; onClose: () => 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Add items</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="display text-lg">Add items</DialogTitle></DialogHeader>
         <Select value={category} onValueChange={setCategory}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -124,12 +135,12 @@ function AddItemsDialog({ orderId, onClose }: { orderId: string; onClose: () => 
         </Select>
         <div className="space-y-2">
           {menu?.filter((m) => m.canCook).map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-2 border-b pb-2">
-              <div><p className="text-sm">{item.name}</p><p className="text-xs text-muted-foreground">{money(item.price)}</p></div>
+            <div key={item.id} className="flex items-center justify-between gap-2 border-b border-border pb-2">
+              <div><p className="text-[13.5px]">{item.name}</p><p className="text-[12px] tabular-nums text-muted-foreground">{money(item.price)}</p></div>
               <div className="flex items-center gap-1">
                 <Button size="sm" variant="outline"
                   onClick={() => setPicked({ ...picked, [item.id]: Math.max(0, (picked[item.id] ?? 0) - 1) })}>-</Button>
-                <span className="w-6 text-center text-sm">{picked[item.id] ?? 0}</span>
+                <span className="figure w-6 text-center text-[14px]">{picked[item.id] ?? 0}</span>
                 <Button size="sm" variant="outline"
                   onClick={() => setPicked({ ...picked, [item.id]: (picked[item.id] ?? 0) + 1 })}>+</Button>
               </div>
@@ -157,7 +168,7 @@ function AssignDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Assign a waiter</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="display text-lg">Assign a waiter</DialogTitle></DialogHeader>
         <Select value={waiter} onValueChange={setWaiter}>
           <SelectTrigger><SelectValue placeholder="Pick someone" /></SelectTrigger>
           <SelectContent>

@@ -2,13 +2,11 @@
 
 import Link from 'next/link';
 import { PageHeader } from '@/components/app-shell';
+import { Panel } from '@/components/panel';
 import { useOrders } from '@/hooks/use-api';
 import { useAuth } from '@/providers/auth-provider';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { money, time } from '@/lib/format';
 
 export default function OrdersPage() {
@@ -17,46 +15,50 @@ export default function OrdersPage() {
 
   return (
     <>
-      <PageHeader title="Orders" description="Orders currently open on the floor"
-        action={can('orders', 'write') ? <Button asChild><Link href="/orders/new">Take an order</Link></Button> : undefined} />
+      <PageHeader description={`${orders?.length ?? 0} orders open on the floor`}
+        action={can('orders', 'write') ? <Button size="sm" asChild><Link href="/orders/new">Take an order</Link></Button> : undefined} />
 
       {isLoading ? <Skeleton className="h-64" /> : orders?.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">No open orders.</CardContent></Card>
+        <Panel className="py-16 text-center"><span className="label-tech">No open orders.</span></Panel>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order</TableHead><TableHead>Table</TableHead><TableHead>Customer</TableHead>
-                  <TableHead>Waiter</TableHead><TableHead>Status</TableHead>
-                  <TableHead className="text-right">Total</TableHead><TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders?.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">
-                      {order.orderNumber}
-                      <span className="block text-xs text-muted-foreground">{time(order.placedAt)}</span>
-                    </TableCell>
-                    <TableCell>{order.table?.label}</TableCell>
-                    <TableCell>
-                      {order.customer?.name}
-                      <span className="block text-xs text-muted-foreground">{order.customer?.phone}</span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{order.waiter?.name ?? '—'}</TableCell>
-                    <TableCell><Badge variant="outline" className="capitalize">{order.status}</Badge></TableCell>
-                    <TableCell className="text-right">{money(order.subtotal)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="ghost" asChild><Link href={`/orders/${order.id}`}>Open</Link></Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <Panel className="px-4 py-1">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="label-tech py-2.5 text-left">Order</th>
+                <th className="label-tech py-2.5 text-left">Table</th>
+                <th className="label-tech py-2.5 text-left">Customer</th>
+                <th className="label-tech py-2.5 text-left">Waiter</th>
+                <th className="label-tech py-2.5 text-left">Status</th>
+                <th className="label-tech py-2.5 text-right">Total</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {orders?.map((order) => (
+                <tr key={order.id} className="border-b border-border last:border-0">
+                  <td className="py-3">
+                    <span className="text-[13.5px] font-medium">{order.orderNumber}</span>
+                    <span className="block text-[11.5px] tabular-nums text-muted-foreground">{time(order.placedAt)}</span>
+                  </td>
+                  <td className="py-3 text-[13.5px]">{order.table?.label}</td>
+                  <td className="py-3">
+                    <span className="text-[13.5px]">{order.customer?.name}</span>
+                    <span className="block text-[11.5px] tabular-nums text-muted-foreground">{order.customer?.phone}</span>
+                  </td>
+                  <td className="py-3 text-[13.5px] text-muted-foreground">{order.waiter?.name ?? '—'}</td>
+                  <td className="py-3">
+                    <span className="label-tech border border-border px-1.5 py-0.5">{order.status}</span>
+                  </td>
+                  <td className="py-3 text-right text-[13.5px] font-semibold tabular-nums">{money(order.subtotal)}</td>
+                  <td className="py-3 text-right">
+                    <Button size="sm" variant="ghost" asChild><Link href={`/orders/${order.id}`}>Open</Link></Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
       )}
     </>
   );

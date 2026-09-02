@@ -2,18 +2,16 @@
 
 import { useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
+import { Panel } from '@/components/panel';
 import { useAction, useIngredients } from '@/hooks/use-api';
 import { useAuth } from '@/providers/auth-provider';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { money } from '@/lib/format';
+import { money, qty } from '@/lib/format';
 import type { Ingredient } from '@/lib/types';
 
 const UNITS = ['kg', 'g', 'l', 'ml', 'pcs'];
@@ -32,51 +30,61 @@ export default function InventoryPage() {
   return (
     <>
       <PageHeader
-        title="Inventory"
-        description={lowCount > 0 ? `${lowCount} ingredients need restocking` : 'All ingredients above their reorder level'}
-        action={editable ? <Button onClick={() => setCreating(true)}>Add ingredient</Button> : undefined}
+        description={lowCount > 0 ? `${lowCount} ingredients below their reorder level` : 'All ingredients above their reorder level'}
+        action={editable ? <Button size="sm" onClick={() => setCreating(true)}>Add ingredient</Button> : undefined}
       />
 
       <Input placeholder="Search ingredients…" value={search} onChange={(e) => setSearch(e.target.value)}
         className="mb-4 max-w-xs" />
 
       {isLoading ? <Skeleton className="h-64" /> : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ingredient</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead className="text-right">In stock</TableHead>
-                  <TableHead className="text-right">Reorder at</TableHead>
-                  <TableHead className="text-right">Cost / unit</TableHead>
-                  {editable ? <TableHead /> : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ingredients?.map((ing) => (
-                  <TableRow key={ing.id}>
-                    <TableCell className="font-medium">
-                      {ing.name}
-                      {ing.isLowStock ? <Badge variant="destructive" className="ml-2">Low</Badge> : null}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{ing.sku}</TableCell>
-                    <TableCell className="text-right">{ing.currentStock} {ing.unit}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{ing.reorderLevel} {ing.unit}</TableCell>
-                    <TableCell className="text-right">{money(ing.costPerUnit)}</TableCell>
+        <Panel className="px-4 py-1">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="label-tech py-2.5 text-left">Ingredient</th>
+                <th className="label-tech py-2.5 text-left">SKU</th>
+                <th className="label-tech py-2.5 text-left">Level</th>
+                <th className="label-tech py-2.5 text-right">In stock</th>
+                <th className="label-tech py-2.5 text-right">Reorder at</th>
+                <th className="label-tech py-2.5 text-right">Cost / unit</th>
+                {editable ? <th /> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {ingredients?.map((ing) => {
+                // Bar reads full at twice the reorder level, so "at par" sits halfway.
+                const fill = Math.min(100, (ing.currentStock / Math.max(ing.reorderLevel * 2, 0.001)) * 100);
+                return (
+                  <tr key={ing.id} className="border-b border-border last:border-0">
+                    <td className="py-3">
+                      <span className="text-[13.5px] font-medium">{ing.name}</span>
+                      {ing.isLowStock ? (
+                        <span className="label-tech ml-2 border border-destructive px-1.5 py-0.5 text-destructive">Low</span>
+                      ) : null}
+                    </td>
+                    <td className="py-3 text-[12.5px] tabular-nums text-muted-foreground">{ing.sku}</td>
+                    <td className="w-32 py-3">
+                      <div className="h-1.5 w-28 bg-data-track">
+                        <div className={ing.isLowStock ? 'h-1.5 bg-destructive' : 'h-1.5 bg-data-strong'}
+                          style={{ width: `${Math.max(2, fill)}%` }} />
+                      </div>
+                    </td>
+                    <td className="py-3 text-right text-[13.5px] font-medium tabular-nums">{qty(ing.currentStock)} {ing.unit}</td>
+                    <td className="py-3 text-right text-[13px] tabular-nums text-muted-foreground">{qty(ing.reorderLevel)} {ing.unit}</td>
+                    <td className="py-3 text-right text-[13.5px] tabular-nums">{money(ing.costPerUnit)}</td>
                     {editable ? (
-                      <TableCell className="space-x-2 text-right">
+                      <td className="space-x-1 py-3 pl-3 text-right">
                         <Button size="sm" variant="outline" onClick={() => setRestocking(ing)}>Restock</Button>
                         <Button size="sm" variant="ghost" onClick={() => setEditing(ing)}>Edit</Button>
-                      </TableCell>
+                      </td>
                     ) : null}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Panel>
       )}
 
       {restocking ? <RestockDialog ingredient={restocking} onClose={() => setRestocking(null)} /> : null}
@@ -95,12 +103,12 @@ function RestockDialog({ ingredient, onClose }: { ingredient: Ingredient; onClos
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Restock {ingredient.name}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="display text-lg">Restock {ingredient.name}</DialogTitle></DialogHeader>
         <div className="space-y-2">
-          <Label htmlFor="qty">Quantity to add ({ingredient.unit})</Label>
+          <Label htmlFor="qty" className="label-tech">Quantity to add ({ingredient.unit})</Label>
           <Input id="qty" type="number" min={0} step="any" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
           <p className="text-xs text-muted-foreground">
-            Currently {ingredient.currentStock} {ingredient.unit} in stock.
+            Currently {qty(ingredient.currentStock)} {ingredient.unit} in stock.
           </p>
         </div>
         <DialogFooter>
@@ -123,20 +131,20 @@ function EditDialog({ ingredient, onClose }: { ingredient: Ingredient; onClose: 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Edit {ingredient.name}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="display text-lg">Edit {ingredient.name}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="iname">Name</Label>
+            <Label htmlFor="iname" className="label-tech">Name</Label>
             <Input id="iname" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="reorder">Reorder level ({ingredient.unit})</Label>
+              <Label htmlFor="reorder" className="label-tech">Reorder level ({ingredient.unit})</Label>
               <Input id="reorder" type="number" min={0} step="any" value={reorderLevel}
                 onChange={(e) => setReorderLevel(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cost">Cost per {ingredient.unit}</Label>
+              <Label htmlFor="cost" className="label-tech">Cost per {ingredient.unit}</Label>
               <Input id="cost" type="number" min={0} step="any" value={costPerUnit}
                 onChange={(e) => setCostPerUnit(e.target.value)} />
             </div>
@@ -163,26 +171,26 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add an ingredient</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="display text-lg">Add an ingredient</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2"><Label>Name</Label><Input value={form.name} onChange={set('name')} /></div>
-            <div className="space-y-2"><Label>SKU</Label><Input value={form.sku} onChange={set('sku')} placeholder="ING-SALT" /></div>
+            <div className="space-y-2"><Label className="label-tech">Name</Label><Input value={form.name} onChange={set('name')} /></div>
+            <div className="space-y-2"><Label className="label-tech">SKU</Label><Input value={form.sku} onChange={set('sku')} placeholder="ING-SALT" /></div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
-              <Label>Unit</Label>
+              <Label className="label-tech">Unit</Label>
               <Select value={form.unit} onValueChange={(v) => setForm({ ...form, unit: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>Opening stock</Label>
+            <div className="space-y-2"><Label className="label-tech">Opening stock</Label>
               <Input type="number" min={0} step="any" value={form.currentStock} onChange={set('currentStock')} /></div>
-            <div className="space-y-2"><Label>Reorder at</Label>
+            <div className="space-y-2"><Label className="label-tech">Reorder at</Label>
               <Input type="number" min={0} step="any" value={form.reorderLevel} onChange={set('reorderLevel')} /></div>
           </div>
-          <div className="space-y-2"><Label>Cost per unit</Label>
+          <div className="space-y-2"><Label className="label-tech">Cost per unit</Label>
             <Input type="number" min={0} step="any" value={form.costPerUnit} onChange={set('costPerUnit')} /></div>
         </div>
         <DialogFooter>

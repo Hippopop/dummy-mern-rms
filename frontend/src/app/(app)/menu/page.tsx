@@ -3,18 +3,17 @@
 import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/app-shell';
+import { Panel } from '@/components/panel';
 import { useAction, useCategories, useIngredients, useMenu } from '@/hooks/use-api';
 import { useAuth } from '@/providers/auth-provider';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { money } from '@/lib/format';
+import { money, qty } from '@/lib/format';
 import type { MenuItem } from '@/lib/types';
 
 const UNITS = ['kg', 'g', 'l', 'ml', 'pcs'];
@@ -37,12 +36,11 @@ export default function MenuPage() {
   return (
     <>
       <PageHeader
-        title="Menu"
-        description="Dishes, prices and the ingredients each one needs"
-        action={editable ? <Button onClick={() => setCreating(true)}>Add dish</Button> : undefined}
+        description={`${items?.length ?? 0} dishes · prices and the ingredients each one needs`}
+        action={editable ? <Button size="sm" onClick={() => setCreating(true)}>Add dish</Button> : undefined}
       />
 
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="mb-4 flex flex-wrap gap-2.5">
         <Input placeholder="Search dishes…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
         <Select value={category} onValueChange={setCategory}>
           <SelectTrigger className="w-48"><SelectValue placeholder="Category" /></SelectTrigger>
@@ -63,46 +61,64 @@ export default function MenuPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-40" />)}
-        </div>
+        <Skeleton className="h-72" />
       ) : items?.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">No dishes match.</CardContent></Card>
+        <Panel className="py-16 text-center"><span className="label-tech">No dishes match.</span></Panel>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items?.map((item) => (
-            <Card key={item.id} className={!item.canCook ? 'opacity-70' : ''}>
-              <CardContent className="space-y-2 pt-6">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.category?.name}</p>
-                  </div>
-                  <span className="shrink-0 font-semibold">{money(item.price)}</span>
-                </div>
-
-                {item.description ? <p className="text-xs text-muted-foreground">{item.description}</p> : null}
-
-                <div className="flex flex-wrap gap-1">
-                  {!item.isAvailable ? <Badge variant="secondary">Off menu</Badge> : null}
-                  {item.canCook
-                    ? <Badge variant="outline">{item.maxPortions === null ? 'No recipe' : `${item.maxPortions} portions left`}</Badge>
-                    : <Badge variant="destructive" className="gap-1"><AlertTriangle className="size-3" /> Cannot cook</Badge>}
-                </div>
-
-                {item.shortages.length > 0 ? (
-                  <p className="text-xs text-destructive">
-                    Short: {item.shortages.map((s) => `${s.name} (${s.available}/${s.required}${s.unit})`).join(', ')}
-                  </p>
-                ) : null}
-
-                {editable ? (
-                  <Button size="sm" variant="outline" className="w-full" onClick={() => setEditing(item)}>Edit</Button>
-                ) : null}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Panel className="px-4 py-1">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="label-tech py-2.5 text-left">Dish</th>
+                <th className="label-tech py-2.5 text-left">Category</th>
+                <th className="label-tech py-2.5 text-left">Kitchen status</th>
+                <th className="label-tech py-2.5 text-right">Price</th>
+                {editable ? <th /> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {items?.map((item) => (
+                <tr key={item.id} className="border-b border-border last:border-0 align-top">
+                  <td className="py-3 pr-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13.5px] font-medium">{item.name}</span>
+                      {!item.isAvailable ? <span className="label-tech border border-border px-1.5 py-0.5">Off menu</span> : null}
+                    </div>
+                    {item.description ? (
+                      <p className="mt-0.5 max-w-md text-[12px] text-muted-foreground">{item.description}</p>
+                    ) : null}
+                    {item.shortages.length > 0 ? (
+                      <p className="mt-1 text-[12px] text-destructive">
+                        Short: {item.shortages.map((s) => `${s.name} (${qty(s.available)}/${qty(s.required)}${s.unit})`).join(', ')}
+                      </p>
+                    ) : null}
+                  </td>
+                  <td className="py-3 text-[13px] text-muted-foreground">{item.category?.name}</td>
+                  <td className="py-3">
+                    {item.canCook ? (
+                      <span className="label-tech flex items-center gap-1.5 text-primary">
+                        <span className="size-1.5 bg-primary" />
+                        {item.maxPortions === null ? 'No recipe' : `${item.maxPortions} portions`}
+                      </span>
+                    ) : (
+                      <span className="label-tech flex items-center gap-1.5 text-destructive">
+                        <AlertTriangle className="size-3" /> Cannot cook
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-3 text-right">
+                    <span className="figure inline-block border border-border px-2 py-1 text-[14px]">{money(item.price)}</span>
+                  </td>
+                  {editable ? (
+                    <td className="py-3 pl-3 text-right">
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(item)}>Edit</Button>
+                    </td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
       )}
 
       {editing ? <EditDialog item={editing} onClose={() => setEditing(null)} /> : null}
@@ -122,14 +138,14 @@ function EditDialog({ item, onClose }: { item: MenuItem; onClose: () => void }) 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Edit {item.name}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="display text-lg">Edit {item.name}</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name" className="label-tech">Name</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="price">Price</Label>
+            <Label htmlFor="price" className="label-tech">Price</Label>
             <Input id="price" type="number" min={0} value={price} onChange={(e) => setPrice(e.target.value)} />
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -137,11 +153,11 @@ function EditDialog({ item, onClose }: { item: MenuItem; onClose: () => void }) 
             Available on the menu
           </label>
           {item.recipe.length > 0 ? (
-            <div className="rounded-md bg-muted/50 p-3 text-xs">
-              <p className="mb-1 font-medium">Ingredients</p>
+            <div className="border border-border p-3 text-xs">
+              <p className="label-tech mb-1.5">Ingredients</p>
               {item.recipe.map((line, i) => (
                 <p key={i} className="text-muted-foreground">
-                  {line.quantity}{line.unit} {line.ingredient?.name} — {line.ingredient?.currentStock}{line.ingredient?.unit} in stock
+                  {qty(line.quantity)}{line.unit} {line.ingredient?.name} — {qty(line.ingredient?.currentStock ?? 0)}{line.ingredient?.unit} in stock
                 </p>
               ))}
             </div>
@@ -173,23 +189,23 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Add a dish</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="display text-lg">Add a dish</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="cname">Name</Label>
+            <Label htmlFor="cname" className="label-tech">Name</Label>
             <Input id="cname" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="cdesc">Description</Label>
+            <Label htmlFor="cdesc" className="label-tech">Description</Label>
             <Textarea id="cdesc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="cprice">Price</Label>
+              <Label htmlFor="cprice" className="label-tech">Price</Label>
               <Input id="cprice" type="number" min={0} value={price} onChange={(e) => setPrice(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label className="label-tech">Category</Label>
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger><SelectValue placeholder="Pick one" /></SelectTrigger>
                 <SelectContent>
@@ -201,7 +217,7 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Ingredients</Label>
+              <Label className="label-tech">Ingredients</Label>
               <Button type="button" size="sm" variant="outline"
                 onClick={() => setRecipe([...recipe, { ingredient: '', quantity: '', unit: 'g' }])}>Add line</Button>
             </div>

@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { apiMessage } from '@/lib/api';
+import { Panel } from '@/components/panel';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -36,31 +36,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Spice Route Kitchen</CardTitle>
-          <CardDescription>Sign in to the management system</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-5">
+          <p className="label-tech text-primary">Restaurant OS</p>
+          <h1 className="display mt-1 text-[30px] leading-none">Spice Route</h1>
+          <p className="label-tech mt-1.5">Staff terminal · Rev. 1.0</p>
+        </div>
+
+        <Panel className="px-5 py-5">
           <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="label-tech">Email</Label>
               <Input id="email" type="email" autoComplete="username" required
                 value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@restaurant.local" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="label-tech">Password</Label>
               <Input id="password" type="password" autoComplete="current-password" required
                 value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </Panel>
+      </div>
     </div>
   );
 }

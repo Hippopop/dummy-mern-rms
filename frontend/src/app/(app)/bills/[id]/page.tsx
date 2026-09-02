@@ -2,11 +2,10 @@
 
 import { use, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
+import { Panel } from '@/components/panel';
 import { useAction, useBill } from '@/hooks/use-api';
 import { useAuth } from '@/providers/auth-provider';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { dateTime, money } from '@/lib/format';
@@ -24,7 +23,7 @@ export default function BillPage({ params }: { params: Promise<{ id: string }> }
     success: 'Paid — the table is now free',
   });
 
-  if (isLoading || !bill) return <><PageHeader title="Bill" /><Skeleton className="h-96" /></>;
+  if (isLoading || !bill) return <Skeleton className="h-96" />;
 
   return (
     <>
@@ -32,52 +31,51 @@ export default function BillPage({ params }: { params: Promise<{ id: string }> }
         description={bill.status === 'paid' ? `Paid ${dateTime(bill.paidAt)} by ${bill.paymentMethod}` : 'Awaiting payment'} />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
-        <Card className="print:shadow-none">
-          <CardContent className="space-y-4 pt-6">
-            <div className="text-center">
-              <p className="font-semibold">{bill.restaurant?.name}</p>
-              <p className="text-xs text-muted-foreground">{bill.restaurant?.address}</p>
-              <p className="text-xs text-muted-foreground">{bill.restaurant?.phone}</p>
+        <Panel className="px-5 py-5">
+          <div className="space-y-4">
+            <div className="border-b border-border pb-4 text-center">
+              <p className="display text-[20px] leading-none">{bill.restaurant?.name}</p>
+              <p className="mt-1.5 text-[12px] text-muted-foreground">{bill.restaurant?.address}</p>
+              <p className="text-[12px] tabular-nums text-muted-foreground">{bill.restaurant?.phone}</p>
             </div>
 
-            <div className="border-y py-3 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Bill</span><span>{bill.billNumber}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Order</span><span>{bill.order?.orderNumber}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Customer</span><span>{bill.customerName}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Phone</span><span>{bill.customerPhone}</span></div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 border-b border-border pb-4">
+              <Field label="Bill" value={bill.billNumber} />
+              <Field label="Order" value={bill.order?.orderNumber ?? '—'} />
+              <Field label="Customer" value={bill.customerName} />
+              <Field label="Phone" value={bill.customerPhone} />
             </div>
 
-            <div className="space-y-1 text-sm">
+            <div className="space-y-1.5">
               {bill.order?.items?.map((item) => (
-                <div key={item._id} className="flex justify-between">
-                  <span>{item.quantity} × {item.name}</span>
-                  <span>{money(item.unitPrice * item.quantity)}</span>
+                <div key={item._id} className="flex justify-between text-[13.5px]">
+                  <span><span className="figure mr-1.5">{item.quantity}×</span>{item.name}</span>
+                  <span className="tabular-nums">{money(item.unitPrice * item.quantity)}</span>
                 </div>
               ))}
             </div>
 
-            <div className="space-y-1 border-t pt-3 text-sm">
-              <div className="flex justify-between"><span>Subtotal</span><span>{money(bill.subtotal)}</span></div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Tax ({bill.taxPercent}%)</span><span>{money(bill.taxAmount)}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Service charge ({bill.serviceChargePercent}%)</span><span>{money(bill.serviceChargeAmount)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2 text-base font-semibold">
-                <span>Total</span><span>{money(bill.total)}</span>
+            <div className="space-y-1.5 border-t border-border pt-3">
+              <Row label="Subtotal" value={money(bill.subtotal)} />
+              <Row label={`Tax (${bill.taxPercent}%)`} value={money(bill.taxAmount)} muted />
+              <Row label={`Service charge (${bill.serviceChargePercent}%)`} value={money(bill.serviceChargeAmount)} muted />
+              <div className="flex items-baseline justify-between border-t border-border pt-3">
+                <span className="label-tech">Total</span>
+                <span className="figure text-[26px] leading-none">{money(bill.total)}</span>
               </div>
             </div>
 
-            <p className="pt-2 text-center text-xs text-muted-foreground">{bill.restaurant?.invoiceFooter}</p>
-          </CardContent>
-        </Card>
+            <p className="label-tech pt-1 text-center">{bill.restaurant?.invoiceFooter}</p>
+          </div>
+        </Panel>
 
-        <Card className="h-fit print:hidden">
-          <CardContent className="space-y-4 pt-6">
+        <Panel className="h-fit px-4 py-4 print:hidden">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Status</span>
-              <Badge variant={bill.status === 'paid' ? 'secondary' : 'default'}>{bill.status}</Badge>
+              <span className="label-tech">Status</span>
+              <span className={bill.status === 'paid'
+                ? 'label-tech border border-border px-1.5 py-0.5 text-muted-foreground'
+                : 'label-tech border border-primary px-1.5 py-0.5 text-primary'}>{bill.status}</span>
             </div>
 
             {bill.status === 'unpaid' && can('bills', 'write') ? (
@@ -92,14 +90,31 @@ export default function BillPage({ params }: { params: Promise<{ id: string }> }
                   onClick={() => pay.mutate({ paymentMethod: method })}>
                   {pay.isPending ? 'Processing…' : `Take payment · ${money(bill.total)}`}
                 </Button>
-                <p className="text-xs text-muted-foreground">Paying completes the order and frees the table.</p>
+                <p className="text-[12px] text-muted-foreground">Paying completes the order and frees the table.</p>
               </>
             ) : null}
 
             <Button variant="outline" className="w-full" onClick={() => window.print()}>Print</Button>
-          </CardContent>
-        </Card>
+          </div>
+        </Panel>
       </div>
     </>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="label-tech">{label}</p>
+      <p className="text-[13.5px]">{value}</p>
+    </div>
+  );
+}
+
+function Row({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className={muted ? 'flex justify-between text-[13px] text-muted-foreground' : 'flex justify-between text-[13.5px]'}>
+      <span>{label}</span><span className="tabular-nums">{value}</span>
+    </div>
   );
 }
