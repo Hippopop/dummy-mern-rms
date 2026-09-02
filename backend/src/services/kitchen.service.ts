@@ -3,6 +3,14 @@ import { ApiError } from '../utils/ApiError.js';
 import { areCompatible, convert, roundQty } from '../utils/helpers.js';
 import type { Unit } from '../types/enums.js';
 
+// A recipe line's ingredient may arrive as a raw ObjectId or, when the caller
+// populated it, as a full document. String() on a populated doc yields
+// "[object Object]", which silently breaks every lookup.
+function refId(value: unknown): string {
+  if (value && typeof value === 'object' && '_id' in value) return String((value as { _id: unknown })._id);
+  return String(value);
+}
+
 export interface Shortage {
   ingredient: string;
   name: string;
@@ -20,7 +28,7 @@ export interface Availability {
 export async function checkIngredients(recipe: IRecipeLine[], portions = 1): Promise<Availability> {
   if (recipe.length === 0) return { canCook: true, maxPortions: null, shortages: [] };
 
-  const ingredients = await Ingredient.find({ _id: { $in: recipe.map((r) => r.ingredient) } })
+  const ingredients = await Ingredient.find({ _id: { $in: recipe.map((r) => refId(r.ingredient)) } })
     .select('name unit currentStock').lean();
   const byId = new Map(ingredients.map((i) => [String(i._id), i]));
 
@@ -28,10 +36,10 @@ export async function checkIngredients(recipe: IRecipeLine[], portions = 1): Pro
   let maxPortions = Number.POSITIVE_INFINITY;
 
   for (const line of recipe) {
-    const ing = byId.get(String(line.ingredient));
+    const ing = byId.get(refId(line.ingredient));
     if (!ing || !areCompatible(line.unit, ing.unit)) {
       shortages.push({
-        ingredient: String(line.ingredient), name: ing?.name ?? '(missing ingredient)',
+        ingredient: refId(line.ingredient), name: ing?.name ?? '(missing ingredient)',
         required: line.quantity, available: 0, unit: line.unit,
       });
       maxPortions = 0;
@@ -68,13 +76,13 @@ export async function consumeIngredients(menuItemId: string, portions: number): 
     );
   }
 
-  const ingredients = await Ingredient.find({ _id: { $in: item.recipe.map((r) => r.ingredient) } })
+  const ingredients = await Ingredient.find({ _id: { $in: item.recipe.map((r) => refId(r.ingredient)) } })
     .select('unit').lean();
   const unitById = new Map(ingredients.map((i) => [String(i._id), i.unit]));
 
   await Promise.all(item.recipe.map((line) => {
-    const unit = unitById.get(String(line.ingredient))!;
+    const unit = unitById.get(refId(line.ingredient))!;
     const amount = convert(line.quantity, line.unit, unit) * portions;
-    return Ingredient.updateOne({ _id: line.ingredient }, { $inc: { currentStock: -roundQty(amount) } });
+    return Ingredient.updateOne({ _id: refId(line.ingredient) }, { $inc: { currentStock: -roundQty(amount) } });
   }));
 }
