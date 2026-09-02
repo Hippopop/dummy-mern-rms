@@ -180,8 +180,39 @@ backend/src/
   routes/        route definitions
   seeds/         demo data
 
-frontend/src/    Next.js app with shadcn/ui components
+frontend/src/
+  lib/           axios client with token refresh, shared types, formatters
+  providers/     auth (session + role access), react-query
+  hooks/         one hook per resource
+  components/    app shell with role-filtered navigation, shadcn/ui
+  app/login/     sign-in
+  app/(app)/     dashboard · orders · tables · kitchen · menu · inventory · bills · users
 ```
+
+## Screens
+
+| Route | What it does | Who sees it |
+|---|---|---|
+| `/login` | Sign in | everyone |
+| `/dashboard` | Revenue, popular dishes, table availability, low stock, recent payments | all but chef |
+| `/orders` | Open orders; `/orders/new` takes one | admin, manager, waiter (chef reads) |
+| `/orders/[id]` | Add items, assign a waiter, generate the bill | admin, manager, waiter |
+| `/tables` | Floor status and who is serving each table | admin, manager, waiter |
+| `/kitchen` | Live tickets; start → ready → served | admin, manager, chef (waiter reads) |
+| `/menu` | Browse, search, sort, filter; edit prices and recipes | all read; admin/manager write |
+| `/inventory` | Ingredients, restocking, low-stock highlighting | all but waiter-write |
+| `/bills` | Bill list; `/bills/[id]` is a printable receipt with payment | admin, manager, waiter |
+| `/users` | Create staff, suspend accounts | admin, manager |
+
+The sidebar only shows what a role may open — it is built from the same access
+map the API enforces, returned by `GET /auth/me`.
+
+### How the frontend holds a session
+
+The access token lives in memory only, never in `localStorage`. On page load the
+app calls `/auth/refresh` with the httpOnly cookie to recover it. If a request
+comes back 401, one refresh is attempted and the request replayed — concurrent
+401s share a single refresh so they cannot rotate each other's tokens.
 
 ## Environment variables
 
